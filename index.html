@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Study Performance Tracker</title>
+<style>
+:root{--bg:#f1f5ff;--card:#ffffff;--text:#1e2340;--muted:#6b7280;--border:#e3e8f7}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0b1020;--card:#161d33;--text:#e7eaf6;--muted:#9aa3c7;--border:#2a3457}
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);padding:16px}
+.wrap{max-width:1150px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+h1{font-size:1.45rem;margin:0;background:linear-gradient(90deg,#6366f1,#ec4899,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:1.05rem;margin:0 0 10px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tab{padding:8px 14px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;cursor:pointer;font-size:.9rem}
+.tab.active{background:linear-gradient(90deg,#6366f1,#ec4899);color:#fff;border-color:transparent}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(99,102,241,.08)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+label{font-size:.82rem;color:var(--muted);display:block;margin-bottom:4px}
+input,select,textarea{width:100%;padding:9px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:.95rem;font-family:inherit}
+input[type=checkbox]{width:20px;height:20px;padding:0;accent-color:#10b981;flex-shrink:0}
+td input[type=number]{padding:6px;max-width:140px}
+button{padding:8px 14px;border:none;border-radius:10px;background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;cursor:pointer;font-size:.88rem}
+button.sec{background:transparent;color:var(--text);border:1px solid var(--border)}
+button.del{background:linear-gradient(90deg,#ef4444,#f97316)}
+button.edit{background:linear-gradient(90deg,#f59e0b,#eab308);color:#111}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.between{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+.chk{display:flex;align-items:center;gap:10px;color:var(--text);font-size:.95rem;margin:0;cursor:pointer;font-weight:600}
+.note{font-size:.8rem;color:var(--muted)}
+.empty{color:var(--muted);font-size:.92rem;padding:6px 0}
+.hero{border-radius:18px;padding:18px;color:#fff;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 40%,#ec4899 100%);margin-bottom:14px;box-shadow:0 8px 24px rgba(139,92,246,.3)}
+.hero .note{color:rgba(255,255,255,.85)}
+.hero select{width:auto;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.hero select option{color:#111}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px}
+.tile{border-radius:14px;padding:14px;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.12)}
+.tile .big{font-size:1.9rem;font-weight:800;line-height:1.1}
+.tile .note{color:rgba(255,255,255,.92)}
+.tbar{height:10px;background:rgba(255,255,255,.3);border-radius:99px;overflow:hidden;margin-top:8px}
+.tbar>div{height:100%;background:#fff;border-radius:99px;transition:width .4s}
+.bar{height:10px;background:var(--border);border-radius:99px;overflow:hidden}
+.bar>div{height:100%;border-radius:99px}
+.quote{border-radius:14px;padding:16px;color:#fff;font-style:italic;font-size:1rem;background:linear-gradient(90deg,#0ea5e9,#22c55e)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:.85rem}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.8rem;font-weight:700;color:#fff}
+.hint{margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:.88rem}
+.hidden{display:none}
+@media (max-width:600px){button{padding:7px 10px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Study Performance Tracker</h1>
+    <div class="row">
+      <button class="sec" onclick="exportData()">Export data</button>
+      <button class="sec" onclick="$('imp').click()">Import data</button>
+      <button class="sec" onclick="resetSample()">Reset sample data</button>
+      <input type="file" id="imp" accept="application/json" class="hidden" onchange="importData(this.files[0])">
+    </div>
+  </header>
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+  <p class="note">Data stays in this page while it is open, so use Export data to save a copy. IQ and GK: entering a number inside the daily range (IQ 175–200, GK 50–75) gives 100%. Comprehension: each part ticked is worth half, so 2 or more parts give 100%.</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const uid = () => Math.random().toString(36).slice(2, 8);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const dayStr = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const toDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const diffDays = (a, b) => Math.round((toDate(b) - toDate(a)) / 86400000);
+const fmtLong = s => toDate(s).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+const fmt = p => p == null ? '—' : p.toFixed(1) + '%';
+const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+const START = '2026-11-27', END = '2027-01-22';
+const TOTAL_DAYS = diffDays(START, END) + 1;
+
+const QUOTES = {
+  high: ["Excellence is not an act but a habit. Your daily practice is building it.", "Outstanding! Keep this rhythm and the finish line on 22 January will feel well earned."],
+  good: ["Strong progress. Consistency is what turns good scores into great ones.", "You are closer than you think. Tighten the weak area and rise higher."],
+  mid:  ["You are on the right track. Review today's work and you will see the change.", "Progress is built one session at a time. Show up tomorrow and beat today's score."],
+  low:  ["Every expert was once a beginner. Small daily practice will turn this around.", "Compare yourself to yesterday, not to others. One focused session starts now."],
+  none: ["Your journey begins today. Log your first session and take the first step."]
+};
+
+let state = {
+  students: [
+    {id:'s1', name:'Student A', note:''},
+    {id:'s2', name:'Student B', note:''}
+  ],
+  subjects: [
+    {id:'iq', name:'IQ', type:'target', min:175, max:200, c1:'#6366f1', c2:'#a855f7', parts:[]},
+    {id:'gk', name:'GK', type:'target', min:50, max:75, c1:'#10b981', c2:'#06b6d4', parts:[]},
+    {id:'comp', name:'Comprehension', type:'parts', min:0, max:0, c1:'#f59e0b', c2:'#ef4444', parts:[
+      {id:'c1', name:'Sanshipthakaranaya'}, {id:'c2', name:'Saranshakaranaya'}, {id:'c3', name:'Rachana'},
+      {id:'c4', name:'Report analysis'}, {id:'c5', name:'Question answer'}
+    ]}
+  ],
+  entries: {}
+};
+
+/*
+  Entry shape per student|date:
+  IQ / GK (type target):  { done: bool, qs: number }
+  Comprehension (parts):  { partId: { done: bool, qs: number } }
+*/
+
+let ui = {tab:'dash', dashSid:'s1', sid:'s1', date: START, editStudent:null};
+
+/* ---------- sample data ---------- */
+function rng(seed){ let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
+
+function seedData(){
+  const data = {};
+  const plan = [{id:'s1', seed:11, ok:0.9}, {id:'s2', seed:29, ok:0.7}];
+  const days = [];
+  for(let i = 0; i < 9; i++){ const d = toDate(START); d.setDate(d.getDate() + i); days.push(dayStr(d)); }
+  plan.forEach(pl => {
+    const r = rng(pl.seed);
+    days.forEach(date => {
+      const day = {};
+      state.subjects.forEach(sub => {
+        if(sub.type === 'target'){
+          const inRange = r() < pl.ok;
+          const qs = inRange
+            ? Math.round(sub.min + r() * (sub.max - sub.min))
+            : Math.round(sub.min * (0.6 + r() * 0.3));
+          day[sub.id] = {done: true, qs};
+        } else {
+          day[sub.id] = {};
+          sub.parts.forEach(p => {
+            const done = r() < pl.ok;
+            day[sub.id][p.id] = {done, qs: done ? Math.round(20 + r() * 20) : 0};
+          });
+        }
+      });
+      data[pl.id + '|' + date] = day;
+    });
+  });
+  return data;
+}
+state.entries = seedData();
+
+function resetSample(){
+  if(!confirm('Replace all current data with the sample data?')) return;
+  state.entries = seedData();
+  render();
+}
+
+/* ---------- calculations ---------- */
+const subjById = id => state.subjects.find(s => s.id === id);
+const studentById = id => state.students.find(s => s.id === id);
+const getDay = (sid, date) => state.entries[sid + '|' + date] || {};
+
+function periodDates(){
+  const arr = [];
+  for(let i = 0; i < TOTAL_DAYS; i++){ const d = toDate(START); d.setDate(d.getDate() + i); arr.push(dayStr(d)); }
+  return arr;
+}
+
+// what was entered for one subject on one day
+function subInfo(day, sub){
+  const d = day[sub.id];
+  if(!d) return null;
+  if(sub.type === 'target'){
+    if(!(d.done || d.qs > 0)) return null;
+    return {qs: +d.qs || 0, ticks: d.done ? 1 : 0, filled: 1};
+  }
+  let qs = 0, ticks = 0, any = false;
+  sub.parts.forEach(p => {
+    const v = d[p.id];
+    if(v && (v.done || v.qs > 0)) any = true;
+    if(v){ qs += v.qs || 0; if(v.done) ticks++; }
+  });
+  if(!any) return null;
+  return {qs, ticks, filled: ticks};
+}
+
+function hasData(day){
+  return state.subjects.some(sub => subInfo(day, sub) !== null);
+}
+
+function studentDates(sid){
+  return Object.keys(state.entries)
+    .filter(k => k.startsWith(sid + '|') && hasData(state.entries[k]))
+    .map(k => k.split('|')[1]).sort();
+}
+
+// score 0-100 for one subject on one day, null if nothing entered
+function dayScore(sid, date, sub){
+  const info = subInfo(getDay(sid, date), sub);
+  if(!info) return null;
+  if(sub.type === 'target'){
+    // inside the daily range (or above the minimum) = 100%
+    return info.qs >= sub.min ? 100 : info.qs / sub.min * 100;
+  }
+  // comprehension: 2 or more parts = 100%, one part = 50%
+  return Math.min(100, info.ticks / 2 * 100);
+}
+
+function periodScore(sid, sub){
+  return avg(periodDates().map(d => dayScore(sid, d, sub)).filter(v => v != null));
+}
+function periodLogged(sid, sub){
+  return periodDates().filter(d => dayScore(sid, d, sub) != null).length;
+}
+function periodTicks(sid, sub){
+  return periodDates().reduce((a, d) => a + (subInfo(getDay(sid, d), sub)?.ticks || 0), 0);
+}
+function overallScore(sid){
+  return avg(state.subjects.map(sub => periodScore(sid, sub)).filter(v => v != null));
+}
+function dayAverage(sid, date){
+  return avg(state.subjects.map(sub => dayScore(sid, date, sub)).filter(v => v != null));
+}
+
+function elapsedDays(){
+  const t = dayStr(new Date());
+  if(t < START) return 0;
+  if(t > END) return TOTAL_DAYS;
+  return diffDays(START, t) + 1;
+}
+
+function motivation(ov, sid){
+  const variant = (sid.charCodeAt(sid.length - 1) || 0) % 2;
+  if(ov == null) return QUOTES.none[0];
+  if(ov >= 85) return QUOTES.high[variant];
+  if(ov >= 70) return QUOTES.good[variant];
+  if(ov >= 50) return QUOTES.mid[variant];
+  return QUOTES.low[variant];
+}
+
+/* ---------- render ---------- */
+function render(){
+  if(!studentById(ui.sid)) ui.sid = state.students[0]?.id || '';
+  if(!studentById(ui.dashSid)) ui.dashSid = state.students[0]?.id || '';
+  const tabs = [['dash','Dashboard'],['entries','Daily entry'],['past','Past data sheet'],['students','Students'],['subjects','Subjects']];
+  $('tabs').innerHTML = tabs.map(([k,l]) =>
+    `<button class="tab ${ui.tab === k ? 'active' : ''}" onclick="setTab('${k}')">${l}</button>`).join('');
+  const views = {dash:renderDash, entries:renderEntries, past:renderPast, students:renderStudents, subjects:renderSubjects};
+  $('view').innerHTML = views[ui.tab]();
+}
+
+function setTab(t){ ui.tab = t; ui.editStudent = null; render(); }
+
+/* ---------- dashboard ---------- */
+function ring(p){
+  const r = 40, c = 2 * Math.PI * r, v = p ?? 0;
+  return `<svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="Overall ${fmt(p)}">
+    <circle cx="52" cy="52" r="${r}" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="11"/>
+    <circle cx="52" cy="52" r="${r}" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"
+      stroke-dasharray="${c * v / 100} ${c}" transform="rotate(-90 52 52)"/>
+    <text x="52" y="58" text-anchor="middle" font-size="19" font-weight="800" fill="#fff">${p == null ? '—' : Math.round(p) + '%'}</text>
+  </svg>`;
+}
+
+function periodCard(){
+  const el = elapsedDays();
+  const left = TOTAL_DAYS - el;
+  const t = dayStr(new Date());
+  const status = t < START ? `Starts in ${diffDays(t, START)} day(s)` : t > END ? 'Period finished' : `Day ${el} of ${TOTAL_DAYS}`;
+  return `<div class="card" style="background:linear-gradient(135deg,rgba(14,165,233,.12),rgba(34,197,94,.12))">
+    <div class="between">
+      <div><h2 style="margin:0">Study period</h2>
+      <div class="note">${fmtLong(START)} → ${fmtLong(END)} · ${TOTAL_DAYS} days</div></div>
+      <div style="text-align:right"><span class="pill" style="background:linear-gradient(90deg,#0ea5e9,#22c55e)">${status}</span>
+      <div class="note" style="margin-top:4px">${left} day(s) left</div></div>
+    </div>
+    <div class="bar" style="margin-top:12px;height:12px"><div style="width:${el / TOTAL_DAYS * 100}%;background:linear-gradient(90deg,#0ea5e9,#22c55e)"></div></div>
+  </div>`;
+}
+
+function dailyChart(sid){
+  const dates = periodDates();
+  const cw = 26, H = 200, L = 40, B = 30, bw = 6;
+  const W = L + dates.length * cw + 12;
+  let s = `<div class="scroll"><svg width="${W}" height="${H + B + 6}" viewBox="0 0 ${W} ${H + B + 6}" role="img" aria-label="Daily performance">`;
+  [0, 25, 50, 75, 100].forEach(v => {
+    const y = H - v / 100 * H;
+    s += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--border)"/>`;
+    s += `<text x="4" y="${y + 4}" font-size="11" fill="var(--muted)">${v}%</text>`;
+  });
+  const today = dayStr(new Date());
+  dates.forEach((d, i) => {
+    const x = L + i * cw + 4;
+    if(d === today) s += `<rect x="${x - 3}" y="0" width="${cw - 2}" height="${H}" rx="6" fill="rgba(236,72,153,.15)"/>`;
+    state.subjects.forEach((sub, si) => {
+      const v = dayScore(sid, d, sub);
+      if(v == null) return;
+      const h = Math.max(v / 100 * H, 2);
+      s += `<rect x="${x + si * (bw + 2)}" y="${H - h}" width="${bw}" height="${h}" rx="3" fill="url(#g${sub.id})"><title>${d} · ${esc(sub.name)}: ${v.toFixed(1)}%</title></rect>`;
+    });
+    if(i % 7 === 0){
+      const dt = toDate(d);
+      s += `<text x="${x}" y="${H + 18}" font-size="11" fill="var(--muted)">${dt.getDate()}/${dt.getMonth() + 1}</text>`;
+    }
+  });
+  s += `<defs>${state.subjects.map(sub => `<linearGradient id="g${sub.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sub.c2}"/><stop offset="1" stop-color="${sub.c1}"/></linearGradient>`).join('')}</defs>`;
+  s += `</svg></div>`;
+  const legend = state.subjects.map(sub => `<span><span class="dot" style="background:${sub.c1}"></span>${esc(sub.name)}</span>`).join('');
+  return s + `<div class="legend">${legend}<span class="note">Pink band = today</span></div>`;
+}
+
+function renderDash(){
+  if(!state.students.length) return periodCard() + `<div class="card"><p class="empty">No students yet. Add a student in the Students tab.</p></div>`;
+  const sid = ui.dashSid;
+  const st = studentById(sid);
+  const ov = overallScore(sid);
+  const logged = studentDates(sid).filter(d => d >= START && d <= END).length;
+  const opts = state.students.map(s => `<option value="${s.id}" ${s.id === sid ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+
+  const tiles = state.subjects.map(sub => {
+    const p = periodScore(sid, sub);
+    const days = periodLogged(sid, sub);
+    const rule = sub.type === 'target'
+      ? `Daily range ${sub.min}–${sub.max} = 100%`
+      : '2+ parts ticked = 100%';
+    return `<div class="tile" style="background:linear-gradient(135deg,${sub.c1},${sub.c2})">
+      <div class="note">${esc(sub.name)}</div>
+      <div class="big">${fmt(p)}</div>
+      <div class="tbar"><div style="width:${p ?? 0}%"></div></div>
+      <div class="note" style="margin-top:8px">${rule}</div>
+      <div class="note">${days} day(s) logged · ${periodTicks(sid, sub)} tick(s)</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="hero">
+      <div class="between">
+        <div style="display:flex;gap:16px;align-items:center">
+          ${ring(ov)}
+          <div>
+            <h2 style="margin:0;color:#fff;font-size:1.4rem">${esc(st.name)}</h2>
+            <div class="note">${esc(st.note)}</div>
+            <div class="note">${logged} day(s) logged in this period</div>
+          </div>
+        </div>
+        <div>
+          <label style="color:rgba(255,255,255,.85)">Choose student</label>
+          <select onchange="ui.dashSid=this.value;render()">${opts}</select>
+        </div>
+      </div>
+      <div class="tiles">${tiles}</div>
+    </div>
+    ${periodCard()}
+    <div class="card">
+      <h2>Daily performance</h2>
+      <p class="note" style="margin-top:-6px">Each bar is one day's score for a subject (0–100%).</p>
+      ${dailyChart(sid)}
+    </div>
+    <div class="quote">${esc(motivation(ov, sid))}</div>`;
+}
+
+/* ---------- daily entry ---------- */
+function renderEntries(){
+  if(!state.students.length) return `<div class="card"><p class="empty">Add a student first in the Students tab.</p></div>`;
+  const day = getDay(ui.sid, ui.date);
+  const stOpts = state.students.map(s => `<option value="${s.id}" ${s.id === ui.sid ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+
+  const iqgk = state.subjects.filter(s => s.type === 'target').map(sub => {
+    const d = day[sub.id] || {};
+    return `<div class="card" style="border-top:5px solid ${sub.c1}">
+      <div class="between">
+        <h2 style="margin:0;color:${sub.c1}">${esc(sub.name)}</h2>
+        <span class="pill" style="background:linear-gradient(90deg,${sub.c1},${sub.c2})">Daily range ${sub.min}–${sub.max}</span>
+      </div>
+      <div class="grid" style="margin-top:12px;align-items:end">
+        <label class="chk"><input type="checkbox" id="d_${sub.id}" ${d.done ? 'checked' : ''}> ${esc(sub.name)} done today</label>
+        <div><label>${esc(sub.name)} questions &amp; answers done</label>
+          <input type="number" min="0" id="q_${sub.id}" value="${d.qs ?? ''}" placeholder="e.g. ${Math.round((sub.min + sub.max) / 2)}"></div>
+      </div>
+      <p class="hint">Enter ${sub.min}–${sub.max} to get 100%. Example: ${Math.round((sub.min + sub.max) / 2)} questions and answers = 100%.</p>
+    </div>`;
+  }).join('');
+
+  const comp = state.subjects.filter(s => s.type === 'parts').map(sub => {
+    const rows = sub.parts.map(p => {
+      const v = day[sub.id]?.[p.id] || {};
+      return `<tr>
+        <td><label class="chk"><input type="checkbox" id="d_${sub.id}_${p.id}" ${v.done ? 'checked' : ''}> ${esc(p.name)}</label></td>
+        <td><input type="number" min="0" id="q_${sub.id}_${p.id}" value="${v.qs ?? ''}" placeholder="0"></td>
+      </tr>`;
+    }).join('');
+    return `<div class="card" style="border-top:5px solid ${sub.c1}">
+      <div class="between">
+        <h2 style="margin:0;color:${sub.c1}">${esc(sub.name)}</h2>
+        <span class="pill" style="background:linear-gradient(90deg,${sub.c1},${sub.c2})">2 or more parts = 100%</span>
+      </div>
+      <div class="scroll" style="margin-top:10px"><table>
+        <thead><tr><th>Sub-part (tick when done)</th><th>Questions &amp; answers</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+
+  return `<div class="card">
+      <div class="grid">
+        <div><label>Student</label><select id="eStudent" onchange="ui.sid=this.value;render()">${stOpts}</select></div>
+        <div><label>Date (${fmtLong(START)} – ${fmtLong(END)})</label>
+          <input type="date" id="eDate" min="${START}" max="${END}" value="${ui.date}" onchange="ui.date=this.value;render()"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button onclick="saveDay()">Save day</button>
+        <button class="sec" onclick="clearDay()">Clear this day</button>
+      </div>
+    </div>
+    ${iqgk}
+    ${comp}`;
+}
+
+function saveDay(){
+  const sid = $('eStudent').value;
+  const date = $('eDate').value;
+  if(!date) return alert('Please choose a date.');
+  if(date < START || date > END) return alert('Please choose a date inside the study period.');
+  const newDay = {};
+  state.subjects.forEach(sub => {
+    if(sub.type === 'target'){
+      const done = $(`d_${sub.id}`).checked;
+      const qs = +($(`q_${sub.id}`).value || 0);
+      if(done || qs > 0) newDay[sub.id] = {done, qs};
+    } else {
+      newDay[sub.id] = {};
+      sub.parts.forEach(p => {
+        const done = $(`d_${sub.id}_${p.id}`).checked;
+        const qs = +($(`q_${sub.id}_${p.id}`).value || 0);
+        if(done || qs > 0) newDay[sub.id][p.id] = {done, qs};
+      });
+    }
+  });
+  const key = sid + '|' + date;
+  if(!hasData(newDay)) delete state.entries[key];
+  else state.entries[key] = newDay;
+  ui.sid = sid; ui.date = date; ui.dashSid = sid;
+  ui.tab = 'dash';
+  render();
+}
+
+function clearDay(){
+  const key = ui.sid + '|' + ui.date;
+  if(!state.entries[key]) return alert('This day has no saved data.');
+  if(!confirm('Clear all data for this student on this date?')) return;
+  delete state.entries[key];
+  render();
+}
+
+/* ---------- past data sheet ---------- */
+function renderPast(){
+  const rows = Object.keys(state.entries)
+    .filter(k => hasData(state.entries[k]))
+    .map(k => { const [sid, date] = k.split('|'); return {sid, date}; })
+    .sort((a, b) => b.date.localeCompare(a.date) || a.sid.localeCompare(b.sid));
+
+  const body = rows.map(r => {
+    const st = studentById(r.sid);
+    const day = getDay(r.sid, r.date);
+    const cells = state.subjects.map(sub => {
+      const info = subInfo(day, sub);
+      const sc = dayScore(r.sid, r.date, sub);
+      const detail = sub.type === 'target'
+        ? `${info?.qs ?? 0}`
+        : `${info?.ticks ?? 0} part(s) · ${info?.qs ?? 0}`;
+      return `<td>${detail}</td><td><span class="pill" style="background:${sub.c1}">${fmt(sc)}</span></td>`;
+    }).join('');
+    return `<tr><td>${esc(r.date)}</td><td>${esc(st?.name || '(deleted)')}</td>${cells}<td><strong>${fmt(dayAverage(r.sid, r.date))}</strong></td></tr>`;
+  }).join('');
+
+  const head = state.subjects.map(s => `<th>${esc(s.name)}</th><th>${esc(s.name)} %</th>`).join('');
+  return `<div class="card">
+    <div class="between"><h2 style="margin:0">Past data sheet</h2>
+      <span class="note">Every saved day, newest first (${rows.length} entries)</span></div>
+    <p class="note">The full record kept separately from the dashboard. Use Daily entry to add or change a day.</p>
+    ${rows.length ? `<div class="scroll" style="margin-top:8px"><table>
+      <thead><tr><th>Date</th><th>Student</th>${head}<th>Day average</th></tr></thead>
+      <tbody>${body}</tbody></table></div>` : `<p class="empty">No saved days yet.</p>`}
+  </div>`;
+}
+
+/* ---------- students ---------- */
+function renderStudents(){
+  const e = ui.editStudent ? studentById(ui.editStudent) : null;
+  const form = `<div class="card">
+    <h2>${e ? 'Edit student' : 'Add student'}</h2>
+    <div class="grid">
+      <div><label>Name</label><input id="stName" value="${esc(e?.name)}"></div>
+      <div><label>Class / note (optional)</label><input id="stNote" value="${esc(e?.note)}"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button onclick="saveStudent()">${e ? 'Update student' : 'Add student'}</button>
+      ${e ? `<button class="sec" onclick="cancelEdit()">Cancel</button>` : ''}
+    </div>
+  </div>`;
+  const rows = state.students.map(s => `<tr>
+      <td><strong>${esc(s.name)}</strong></td>
+      <td>${esc(s.note)}</td>
+      <td><div class="row">
+        <button class="edit" onclick="editStudent('${s.id}')">Edit</button>
+        <button class="del" onclick="delStudent('${s.id}')">Delete</button>
+      </div></td>
+    </tr>`).join('');
+  const list = `<div class="card"><h2>Students (${state.students.length})</h2>
+    ${state.students.length ? `<div class="scroll"><table><thead><tr><th>Name</th><th>Note</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="empty">No students yet.</p>`}
+  </div>`;
+  return form + list;
+}
+
+function saveStudent(){
+  const name = $('stName').value.trim();
+  const note = $('stNote').value.trim();
+  if(!name) return alert('Please enter a name.');
+  if(ui.editStudent){
+    Object.assign(studentById(ui.editStudent), {name, note});
+    ui.editStudent = null;
+  } else {
+    const id = 's' + uid();
+    state.students.push({id, name, note});
+    ui.sid = id; ui.dashSid = id;
+  }
+  render();
+}
+
+function editStudent(id){ ui.tab = 'students'; ui.editStudent = id; render(); }
+function cancelEdit(){ ui.editStudent = null; render(); }
+
+function delStudent(id){
+  const s = studentById(id);
+  if(!confirm(`Delete "${s.name}" and all their records?`)) return;
+  state.students = state.students.filter(x => x.id !== id);
+  Object.keys(state.entries).forEach(k => { if(k.startsWith(id + '|')) delete state.entries[k]; });
+  if(ui.editStudent === id) ui.editStudent = null;
+  render();
+}
+
+/* ---------- subjects ---------- */
+function renderSubjects(){
+  const blocks = state.subjects.map(sub => `<div class="card" style="border-left:5px solid ${sub.c1}">
+    <h2>${esc(sub.name)}</h2>
+    ${sub.type === 'target' ? `<div class="grid">
+      <div><label>Daily minimum (100% from this number)</label><input type="number" min="0" id="min_${sub.id}" value="${sub.min}"></div>
+      <div><label>Daily maximum</label><input type="number" min="0" id="max_${sub.id}" value="${sub.max}"></div>
+    </div>` : `<div style="margin-top:6px"><label>Sub-parts (separated by commas)</label>
+      <textarea rows="2" id="parts_${sub.id}">${esc(sub.parts.map(p => p.name).join(', '))}</textarea></div>`}
+  </div>`).join('');
+  return `<div class="card"><p class="note" style="margin:0 0 10px">Change the daily ranges for IQ and GK, or the Comprehension sub-part names. Renamed sub-parts keep their saved figures by position.</p>
+    <div class="row"><button onclick="saveSubjects()">Save subjects</button></div></div>${blocks}`;
+}
+
+function saveSubjects(){
+  for(const sub of state.subjects){
+    if(sub.type === 'target'){
+      const min = +$(`min_${sub.id}`).value || 0;
+      const max = +$(`max_${sub.id}`).value || 0;
+      if(max < min) return alert(`${sub.name}: maximum must be at least the minimum.`);
+      sub.min = min; sub.max = max;
+    } else {
+      const names = $(`parts_${sub.id}`).value.split(',').map(s => s.trim()).filter(Boolean);
+      if(!names.length) return alert(`${sub.name}: add at least one sub-part.`);
+      sub.parts = names.map((n, i) => ({id: sub.parts[i]?.id || (sub.id + uid()), name: n}));
+    }
+  }
+  render();
+  alert('Subjects saved.');
+}
+
+/* ---------- export / import ---------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'study-performance-data.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function importData(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const d = JSON.parse(reader.result);
+      if(!Array.isArray(d.students) || !Array.isArray(d.subjects) || typeof d.entries !== 'object') throw new Error();
+      state = d;
+      ui.sid = state.students[0]?.id || '';
+      ui.dashSid = ui.sid;
+      render();
+    }catch(err){
+      alert('This file is not a valid tracker data file.');
+    }
+  };
+  reader.readAsText(file);
+  $('imp').value = '';
+}
+
+render();
+</script>
+</body>
+</html>
